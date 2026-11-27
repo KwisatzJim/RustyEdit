@@ -11,7 +11,7 @@ Use **File → Open Recent** to reopen one of the last 10 files you opened. The 
 Build from this checkout with Rust and a C compiler:
 
 ```sh
-cargo install --path crates/edit --locked
+cargo install --locked --git https://github.com/KwisatzJim/RustyEdit edit
 edit --version
 ```
 
