@@ -5,6 +5,7 @@ use std::borrow::Cow;
 use std::ffi::{OsStr, OsString};
 use std::mem;
 use std::path::{Path, PathBuf};
+use std::rc::Weak;
 
 use edit::framebuffer::IndexedColor;
 use edit::helpers::*;
@@ -153,7 +154,7 @@ pub struct State {
     pub search_needle: String,
     pub search_replacement: String,
     pub search_options: buffer::SearchOptions,
-    pub search_success: bool,
+    pub search_failure_buffer: Option<Weak<buffer::TextBufferCell>>,
 
     pub wants_language_picker: bool,
 
@@ -203,7 +204,7 @@ impl State {
             search_needle: Default::default(),
             search_replacement: Default::default(),
             search_options: Default::default(),
-            search_success: true,
+            search_failure_buffer: None,
 
             wants_language_picker: false,
 
@@ -257,8 +258,13 @@ pub fn error_log_add(ctx: &mut Context, state: &mut State, err: apperr::Error) {
 
 pub fn draw_error_log(ctx: &mut Context, state: &mut State) {
     ctx.modal_begin("error", loc(LocId::ErrorDialogTitle));
-    ctx.attr_background_rgba(ctx.indexed(IndexedColor::Red));
-    ctx.attr_foreground_rgba(ctx.indexed(IndexedColor::BrightWhite));
+    let background = ctx.indexed(IndexedColor::Background).oklab_blend(ctx.indexed_alpha(
+        IndexedColor::Red,
+        1,
+        2,
+    ));
+    ctx.attr_background_rgba(background);
+    ctx.attr_foreground_rgba(ctx.contrasted(background));
     {
         ctx.block_begin("content");
         ctx.attr_padding(Rect::three(0, 2, 1));
@@ -278,7 +284,7 @@ pub fn draw_error_log(ctx: &mut Context, state: &mut State) {
         }
         ctx.block_end();
 
-        if ctx.button("ok", loc(LocId::Ok), ButtonStyle::default()) {
+        if ctx.button("ok", loc(LocId::Ok), ButtonStyle::action()) {
             state.error_log_count = 0;
         }
         ctx.attr_position(Position::Center);

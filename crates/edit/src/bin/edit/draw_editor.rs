@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+use std::rc::Rc;
+
 use edit::framebuffer::IndexedColor;
 use edit::helpers::*;
 use edit::icu;
@@ -63,8 +65,8 @@ fn draw_search(ctx: &mut Context, state: &mut State) {
 
     ctx.block_begin("search");
     ctx.attr_focus_well();
-    ctx.attr_background_rgba(ctx.indexed(IndexedColor::White));
-    ctx.attr_foreground_rgba(ctx.indexed(IndexedColor::Black));
+    ctx.attr_background_rgba(state.menubar_color_bg);
+    ctx.attr_foreground_rgba(state.menubar_color_fg);
     {
         if ctx.contains_focus() && ctx.consume_shortcut(vk::ESCAPE) {
             state.wants_search.kind = StateSearchKind::Hidden;
@@ -80,9 +82,17 @@ fn draw_search(ctx: &mut Context, state: &mut State) {
                 if ctx.editline("needle", &mut state.search_needle) {
                     action = Some(SearchAction::Search);
                 }
-                if !state.search_success {
-                    ctx.attr_background_rgba(ctx.indexed(IndexedColor::Red));
-                    ctx.attr_foreground_rgba(ctx.indexed(IndexedColor::BrightWhite));
+                if state
+                    .search_failure_buffer
+                    .as_ref()
+                    .and_then(|buffer| buffer.upgrade())
+                    .is_some_and(|buffer| Rc::ptr_eq(&buffer, &doc.buffer))
+                {
+                    let background = ctx
+                        .indexed(IndexedColor::Background)
+                        .oklab_blend(ctx.indexed_alpha(IndexedColor::Red, 1, 2));
+                    ctx.attr_background_rgba(background);
+                    ctx.attr_foreground_rgba(ctx.contrasted(background));
                 }
                 ctx.attr_intrinsic_size(Size { width: COORD_TYPE_SAFE_MAX, height: 1 });
                 if focus == StateSearchKind::Search {
@@ -137,12 +147,12 @@ fn draw_search(ctx: &mut Context, state: &mut State) {
                 &mut state.search_options.use_regex,
             );
             if state.wants_search.kind == StateSearchKind::Replace
-                && ctx.button("replace-all", loc(LocId::SearchReplaceAll), ButtonStyle::default())
+                && ctx.button("replace-all", loc(LocId::SearchReplaceAll), ButtonStyle::action())
             {
                 change = true;
                 change_action = Some(SearchAction::ReplaceAll);
             }
-            if ctx.button("close", loc(LocId::SearchClose), ButtonStyle::default()) {
+            if ctx.button("close", loc(LocId::SearchClose), ButtonStyle::action()) {
                 state.wants_search.kind = StateSearchKind::Hidden;
             }
 
@@ -170,22 +180,32 @@ pub fn search_execute(ctx: &mut Context, state: &mut State, action: SearchAction
         return;
     };
 
-    state.search_success = match action {
-        SearchAction::Search => {
-            doc.buffer.borrow_mut().find_and_select(&state.search_needle, state.search_options)
-        }
-        SearchAction::Replace => doc.buffer.borrow_mut().find_and_replace(
-            &state.search_needle,
-            state.search_options,
-            state.search_replacement.as_bytes(),
-        ),
-        SearchAction::ReplaceAll => doc.buffer.borrow_mut().find_and_replace_all(
-            &state.search_needle,
-            state.search_options,
-            state.search_replacement.as_bytes(),
-        ),
-    }
-    .is_ok();
+    let succeeded = match action {
+        SearchAction::Search => doc
+            .buffer
+            .borrow_mut()
+            .find_and_select_match(&state.search_needle, state.search_options)
+            .is_ok_and(|found| found || state.search_needle.is_empty()),
+        SearchAction::Replace => doc
+            .buffer
+            .borrow_mut()
+            .find_and_replace(
+                &state.search_needle,
+                state.search_options,
+                state.search_replacement.as_bytes(),
+            )
+            .is_ok(),
+        SearchAction::ReplaceAll => doc
+            .buffer
+            .borrow_mut()
+            .find_and_count_replacements(
+                &state.search_needle,
+                state.search_options,
+                state.search_replacement.as_bytes(),
+            )
+            .is_ok_and(|count| count > 0),
+    };
+    state.search_failure_buffer = (!succeeded).then(|| Rc::downgrade(&doc.buffer));
 
     ctx.needs_rerender();
 }
@@ -229,8 +249,13 @@ pub fn draw_handle_wants_close(ctx: &mut Context, state: &mut State) {
     let mut action = Action::None;
 
     ctx.modal_begin("unsaved-changes", loc(LocId::UnsavedChangesDialogTitle));
-    ctx.attr_background_rgba(ctx.indexed(IndexedColor::Red));
-    ctx.attr_foreground_rgba(ctx.indexed(IndexedColor::BrightWhite));
+    let background = ctx.indexed(IndexedColor::Background).oklab_blend(ctx.indexed_alpha(
+        IndexedColor::Red,
+        1,
+        2,
+    ));
+    ctx.attr_background_rgba(background);
+    ctx.attr_foreground_rgba(ctx.contrasted(background));
     {
         let contains_focus = ctx.contains_focus();
 
@@ -249,7 +274,7 @@ pub fn draw_handle_wants_close(ctx: &mut Context, state: &mut State) {
             if ctx.button(
                 "yes",
                 loc(LocId::UnsavedChangesDialogYes),
-                ButtonStyle::default().accelerator('S'),
+                ButtonStyle::action().accelerator('S'),
             ) {
                 action = Action::Save;
             }
@@ -257,11 +282,11 @@ pub fn draw_handle_wants_close(ctx: &mut Context, state: &mut State) {
             if ctx.button(
                 "no",
                 loc(LocId::UnsavedChangesDialogNo),
-                ButtonStyle::default().accelerator('N'),
+                ButtonStyle::action().accelerator('N'),
             ) {
                 action = Action::Discard;
             }
-            if ctx.button("cancel", loc(LocId::Cancel), ButtonStyle::default()) {
+            if ctx.button("cancel", loc(LocId::Cancel), ButtonStyle::action()) {
                 action = Action::Cancel;
             }
 
@@ -308,8 +333,11 @@ pub fn draw_goto_menu(ctx: &mut Context, state: &mut State) {
                 state.goto_invalid = false;
             }
             if state.goto_invalid {
-                ctx.attr_background_rgba(ctx.indexed(IndexedColor::Red));
-                ctx.attr_foreground_rgba(ctx.indexed(IndexedColor::BrightWhite));
+                let background = ctx
+                    .indexed(IndexedColor::Background)
+                    .oklab_blend(ctx.indexed_alpha(IndexedColor::Red, 1, 2));
+                ctx.attr_background_rgba(background);
+                ctx.attr_foreground_rgba(ctx.contrasted(background));
             }
 
             ctx.attr_intrinsic_size(Size { width: 24, height: 1 });

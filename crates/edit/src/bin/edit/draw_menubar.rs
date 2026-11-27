@@ -159,7 +159,7 @@ pub fn draw_dialog_about(ctx: &mut Context, state: &mut State) {
         ctx.inherit_focus();
         ctx.attr_padding(Rect::three(1, 2, 1));
         {
-            ctx.label("description", "Microsoft Edit");
+            ctx.label("description", "RustyEdit");
             ctx.attr_overflow(Overflow::TruncateTail);
             ctx.attr_position(Position::Center);
 
@@ -184,7 +184,7 @@ pub fn draw_dialog_about(ctx: &mut Context, state: &mut State) {
             ctx.attr_padding(Rect::three(1, 2, 0));
             ctx.attr_position(Position::Center);
             {
-                if ctx.button("ok", loc(LocId::Ok), ButtonStyle::default()) {
+                if ctx.button("ok", loc(LocId::Ok), ButtonStyle::action()) {
                     state.wants_about = false;
                 }
                 ctx.inherit_focus();

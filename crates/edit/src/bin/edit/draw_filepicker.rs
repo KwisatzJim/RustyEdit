@@ -88,7 +88,7 @@ pub fn draw_file_picker(ctx: &mut Context, state: &mut State) {
                     offset_x: 0.0,
                     offset_y: 1.0,
                 });
-                ctx.attr_border();
+                ctx.attr_padding(Rect::two(0, 1));
                 ctx.attr_background_rgba(bg);
                 ctx.attr_foreground_rgba(fg);
                 {
@@ -147,7 +147,8 @@ pub fn draw_file_picker(ctx: &mut Context, state: &mut State) {
                 height: height - 3,
             },
         );
-        ctx.attr_background_rgba(ctx.indexed_alpha(IndexedColor::Black, 1, 4));
+        ctx.attr_background_rgba(ctx.indexed(IndexedColor::Background));
+        ctx.attr_foreground_rgba(ctx.indexed(IndexedColor::Foreground));
         {
             ctx.next_block_id_mixin(state.file_picker_pending_dir_revision);
             ctx.list_begin("files");
@@ -197,8 +198,13 @@ pub fn draw_file_picker(ctx: &mut Context, state: &mut State) {
         let mut save;
 
         ctx.modal_begin("overwrite", loc(LocId::FileOverwriteWarning));
-        ctx.attr_background_rgba(ctx.indexed(IndexedColor::Red));
-        ctx.attr_foreground_rgba(ctx.indexed(IndexedColor::BrightWhite));
+        let background = ctx.indexed(IndexedColor::Background).oklab_blend(ctx.indexed_alpha(
+            IndexedColor::Red,
+            1,
+            2,
+        ));
+        ctx.attr_background_rgba(background);
+        ctx.attr_foreground_rgba(ctx.contrasted(background));
         {
             let contains_focus = ctx.contains_focus();
 
@@ -215,10 +221,10 @@ pub fn draw_file_picker(ctx: &mut Context, state: &mut State) {
                 ctx.table_next_row();
                 ctx.inherit_focus();
 
-                save = ctx.button("yes", loc(LocId::Yes), ButtonStyle::default());
+                save = ctx.button("yes", loc(LocId::Yes), ButtonStyle::action());
                 ctx.inherit_focus();
 
-                if ctx.button("no", loc(LocId::No), ButtonStyle::default()) {
+                if ctx.button("no", loc(LocId::No), ButtonStyle::action()) {
                     state.file_picker_overwrite_warning = None;
                 }
             }

@@ -1,47 +1,14 @@
-# ![Application Icon for Edit](./assets/edit.svg) Edit
+# RustyEdit
 
-A simple editor for simple needs.
-
-This editor pays homage to the classic [MS-DOS Editor](https://en.wikipedia.org/wiki/MS-DOS_Editor), but with a modern interface and input controls similar to VS Code. The goal is to provide an accessible editor that even users largely unfamiliar with terminals can easily use.
-
-![Screenshot of Edit with the About dialog in the foreground](./assets/edit_hero_image.png)
+RustyEdit is an independent fork of [Microsoft Edit](https://github.com/microsoft/edit), a terminal text editor inspired by the MS-DOS Editor. The executable is named `edit`.
 
 ## Installation
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/microsoft-edit.svg?exclude_unsupported=1)](https://repology.org/project/microsoft-edit/versions)
+Build from this checkout with Rust and a C compiler:
 
-You can also download binaries from [our Releases page](https://github.com/microsoft/edit/releases/latest).
-
-### Windows
-
-You can install the latest version with WinGet:
-```powershell
-winget install Microsoft.Edit
-```
-
-### Linux (build from source)
-
-If your distribution does not provide binaries, or if you'd like to build your own, you can use our install script, provided you have installed:
-* Rust (via `rustup` or similar)
-* A C compiler (e.g. `gcc`)
-* ICU (e.g. libicu78, libicu, icu)
-* curl/wget and tar
-
-The following command will then install `msedit` into `~/.local/bin`:
 ```sh
-curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/microsoft/edit/main/assets/install.sh | sh
-```
-
-Additional flags are `--dev`, to build directly from the main branch, and `--system` to install into `/usr/local/bin`. For instance:
-```sh
-curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/microsoft/edit/main/assets/install.sh | sh -s -- --dev --system
-```
-
-### macOS
-
-You can install the latest version with Homebrew:
-```sh
-brew install msedit
+cargo install --path crates/edit --locked
+edit --version
 ```
 
 ## Build Instructions
@@ -73,10 +40,7 @@ Environment variable | Description
 
 ### Package Naming
 
-The canonical executable name is "edit" and the alternative name is "msedit".
-We're aware of the potential conflict of "edit" with existing commands and recommend alternatively naming packages and executables "msedit".
-Names such as "ms-edit" should be avoided.
-Assigning an "edit" alias is recommended, if possible.
+Use `rustyedit` for the distribution package and `edit` for the executable.
 
 ### ICU library name (SONAME)
 

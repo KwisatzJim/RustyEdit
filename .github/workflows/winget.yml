@@ -19,8 +19,8 @@ jobs:
     env:
       WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_TOKEN }}
 
-    # Only submit stable releases
-    if: ${{ !github.event.release.prerelease }}
+    # This workflow publishes the upstream Microsoft.Edit package.
+    if: ${{ github.repository == 'microsoft/edit' && !github.event.release.prerelease }}
     steps:
       - name: Submit package using wingetcreate
         run: |

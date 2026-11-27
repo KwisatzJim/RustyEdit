@@ -342,8 +342,13 @@ impl Framebuffer {
         let thumb_top = ((thumb_top + 7) / 8) as CoordType;
         let thumb_bottom = (thumb_bottom / 8) as CoordType;
 
-        self.blend_bg(track_clipped, self.indexed(IndexedColor::BrightBlack));
-        self.blend_fg(track_clipped, self.indexed(IndexedColor::BrightWhite));
+        let background = self.indexed(IndexedColor::Background);
+        let track_color =
+            background.oklab_blend(self.indexed_alpha(IndexedColor::Foreground, 1, 8));
+        let thumb_color =
+            background.oklab_blend(self.indexed_alpha(IndexedColor::Foreground, 2, 3));
+        self.blend_bg(track_clipped, track_color);
+        self.blend_fg(track_clipped, thumb_color);
 
         // Draw the full blocks.
         for y in thumb_top..thumb_bottom {
@@ -367,8 +372,8 @@ impl Framebuffer {
                 right: track_clipped.right,
                 bottom: thumb_bottom + 1,
             };
-            self.blend_bg(rect, self.indexed(IndexedColor::BrightWhite));
-            self.blend_fg(rect, self.indexed(IndexedColor::BrightBlack));
+            self.blend_bg(rect, thumb_color);
+            self.blend_fg(rect, track_color);
         }
 
         ((thumb_height + 4) / 8) as CoordType

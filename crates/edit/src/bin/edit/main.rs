@@ -96,10 +96,11 @@ fn run() -> apperr::Result<()> {
     let _restore = setup_terminal(&mut tui, &mut state, &mut vt_parser);
 
     state.menubar_color_bg = tui.indexed(IndexedColor::Background).oklab_blend(tui.indexed_alpha(
-        IndexedColor::BrightBlue,
+        IndexedColor::Foreground,
         1,
-        2,
+        8,
     ));
+
     state.menubar_color_fg = tui.contrasted(state.menubar_color_bg);
     let floater_bg = tui
         .indexed_alpha(IndexedColor::Background, 2, 3)
@@ -325,6 +326,7 @@ fn handle_stdin(state: &mut State) -> apperr::Result<()> {
 
 fn print_help() {
     sys::write_stdout(concat!(
+        "RustyEdit\n\n",
         "Usage: edit [OPTIONS] [FILE]...\n",
         "Options:\n",
         "    -g, --goto <FILE:LINE[:CHARACTER]>    Open a file at the specified line and character position\n",
@@ -335,7 +337,7 @@ fn print_help() {
 }
 
 fn print_version() {
-    sys::write_stdout(concat!("edit version ", env!("CARGO_PKG_VERSION"), "\n"));
+    sys::write_stdout(concat!("RustyEdit version ", env!("CARGO_PKG_VERSION"), "\n"));
 }
 
 fn draw(tui: &mut Tui, input: Option<input::Input>, state: &mut State) {
@@ -454,7 +456,7 @@ fn write_terminal_title<'a>(arena: &'a Arena, output: &mut BString<'a>, state: &
         output.push_str(arena, &sanitized);
         output.push_str(arena, " - ");
     }
-    output.push_str(arena, "edit\x1b\\");
+    output.push_str(arena, "RustyEdit\x1b\\");
 
     state.osc_title_file_status.filename = filename.to_string();
     state.osc_title_file_status.dirty = dirty;
@@ -515,24 +517,24 @@ fn draw_handle_clipboard_change(ctx: &mut Context, state: &mut State) {
             ctx.inherit_focus();
 
             if over_limit {
-                if ctx.button("ok", loc(LocId::Ok), ButtonStyle::default()) {
+                if ctx.button("ok", loc(LocId::Ok), ButtonStyle::action()) {
                     done = Some(true);
                 }
                 ctx.inherit_focus();
             } else {
-                if ctx.button("always", loc(LocId::Always), ButtonStyle::default()) {
+                if ctx.button("always", loc(LocId::Always), ButtonStyle::action()) {
                     state.osc_clipboard_always_send = true;
                     done = Some(true);
                 }
 
-                if ctx.button("yes", loc(LocId::Yes), ButtonStyle::default()) {
+                if ctx.button("yes", loc(LocId::Yes), ButtonStyle::action()) {
                     done = Some(true);
                 }
                 if data_len < 10 * LARGE_CLIPBOARD_THRESHOLD {
                     ctx.inherit_focus();
                 }
 
-                if ctx.button("no", loc(LocId::No), ButtonStyle::default()) {
+                if ctx.button("no", loc(LocId::No), ButtonStyle::action()) {
                     done = Some(false);
                 }
                 if data_len >= 10 * LARGE_CLIPBOARD_THRESHOLD {

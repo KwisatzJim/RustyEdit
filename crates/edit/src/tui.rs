@@ -265,9 +265,15 @@ pub struct ButtonStyle {
     accelerator: Option<char>,
     checked: Option<bool>,
     bracketed: bool,
+    highlight_focus: bool,
 }
 
 impl ButtonStyle {
+    /// Draw an unbracketed action button with a blue focus highlight.
+    pub fn action() -> Self {
+        Self { bracketed: false, highlight_focus: true, ..Self::default() }
+    }
+
     /// Draw an accelerator label: `[_E_xample button]` or `[Example button(X)]`
     ///
     /// Must provide an upper-case ASCII character.
@@ -289,6 +295,7 @@ impl Default for ButtonStyle {
         Self {
             accelerator: None,
             checked: None,
+            highlight_focus: false,
             bracketed: true, // Default style for most buttons. Brackets may be disabled e.g. for buttons in menus
         }
     }
@@ -2091,7 +2098,15 @@ impl<'a> Context<'a, '_> {
         self.button_label(classname, text, style);
         self.attr_focusable();
         if self.is_focused() {
-            self.attr_reverse();
+            if style.highlight_focus {
+                let background = self
+                    .indexed(IndexedColor::Background)
+                    .oklab_blend(self.indexed_alpha(IndexedColor::BrightBlue, 1, 3));
+                self.attr_background_rgba(background);
+                self.attr_foreground_rgba(self.contrasted(background));
+            } else {
+                self.attr_reverse();
+            }
         }
         self.button_activated()
     }
@@ -2104,9 +2119,8 @@ impl<'a> Context<'a, '_> {
         if self.is_focused() {
             self.attr_reverse();
         }
-        self.styled_label_add_text(if *checked { "[◼ " } else { "[◻ " });
+        self.styled_label_add_text(if *checked { "◼ " } else { "◻ " });
         self.styled_label_add_text(text);
-        self.styled_label_add_text("]");
         self.styled_label_end();
 
         let activated = self.button_activated();
@@ -3203,8 +3217,11 @@ impl<'a> Context<'a, '_> {
         if contains_focus {
             {
                 let mut node = selected_next.borrow_mut();
-                node.attributes.bg = self.indexed(IndexedColor::Green);
-                node.attributes.fg = self.contrasted(self.indexed(IndexedColor::Green));
+                let background = self
+                    .indexed(IndexedColor::Background)
+                    .oklab_blend(self.indexed_alpha(IndexedColor::BrightBlue, 1, 3));
+                node.attributes.bg = background;
+                node.attributes.fg = self.contrasted(background);
             }
             self.steal_focus_for(selected_next);
         }
@@ -3258,8 +3275,11 @@ impl<'a> Context<'a, '_> {
             self.attr_foreground_rgba(self.tui.floater_default_fg);
 
             if self.is_focused() {
-                self.attr_background_rgba(self.indexed(IndexedColor::Green));
-                self.attr_foreground_rgba(self.contrasted(self.indexed(IndexedColor::Green)));
+                let background = self
+                    .indexed(IndexedColor::Background)
+                    .oklab_blend(self.indexed_alpha(IndexedColor::BrightBlue, 1, 3));
+                self.attr_background_rgba(background);
+                self.attr_foreground_rgba(self.contrasted(background));
             }
 
             self.next_block_id_mixin(mixin);
@@ -3271,7 +3291,7 @@ impl<'a> Context<'a, '_> {
                 offset_x: 0.0,
                 offset_y: 1.0,
             });
-            self.attr_border();
+            self.attr_padding(Rect::two(0, 1));
             self.attr_focus_well();
 
             if keyboard_focus {
@@ -3312,8 +3332,11 @@ impl<'a> Context<'a, '_> {
         }
 
         if self.is_focused() {
-            self.attr_background_rgba(self.indexed(IndexedColor::Green));
-            self.attr_foreground_rgba(self.contrasted(self.indexed(IndexedColor::Green)));
+            let background = self
+                .indexed(IndexedColor::Background)
+                .oklab_blend(self.indexed_alpha(IndexedColor::BrightBlue, 1, 3));
+            self.attr_background_rgba(background);
+            self.attr_foreground_rgba(self.contrasted(background));
         }
 
         let clicked =

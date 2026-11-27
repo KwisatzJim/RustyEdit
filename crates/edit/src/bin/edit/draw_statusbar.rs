@@ -17,8 +17,13 @@ use crate::state::*;
 pub fn draw_statusbar(ctx: &mut Context, state: &mut State) {
     ctx.table_begin("statusbar");
     ctx.attr_focus_well();
-    ctx.attr_background_rgba(state.menubar_color_bg);
-    ctx.attr_foreground_rgba(state.menubar_color_fg);
+    let background = ctx.indexed(IndexedColor::Background).oklab_blend(ctx.indexed_alpha(
+        IndexedColor::Foreground,
+        1,
+        8,
+    ));
+    ctx.attr_background_rgba(background);
+    ctx.attr_foreground_rgba(ctx.contrasted(background));
     ctx.table_set_cell_gap(Size { width: 2, height: 0 });
     ctx.attr_intrinsic_size(Size { width: COORD_TYPE_SAFE_MAX, height: 1 });
     ctx.attr_padding(Rect::two(0, 1));
@@ -31,20 +36,24 @@ pub fn draw_statusbar(ctx: &mut Context, state: &mut State) {
         state.wants_language_picker |= ctx.button(
             "language",
             tb.language().map_or("Plain Text", |l| l.name),
-            ButtonStyle::default(),
+            ButtonStyle::default().bracketed(false),
         );
         if state.wants_statusbar_focus {
             state.wants_statusbar_focus = false;
             ctx.steal_focus();
         }
 
-        if ctx.button("newline", if tb.is_crlf() { "CRLF" } else { "LF" }, ButtonStyle::default()) {
+        if ctx.button(
+            "newline",
+            if tb.is_crlf() { "CRLF" } else { "LF" },
+            ButtonStyle::default().bracketed(false),
+        ) {
             let is_crlf = tb.is_crlf();
             tb.normalize_newlines(!is_crlf);
         }
 
         state.wants_encoding_picker |=
-            ctx.button("encoding", tb.encoding(), ButtonStyle::default());
+            ctx.button("encoding", tb.encoding(), ButtonStyle::default().bracketed(false));
         if state.wants_encoding_picker {
             if doc.path.is_some() {
                 ctx.block_begin("frame");
@@ -56,13 +65,12 @@ pub fn draw_statusbar(ctx: &mut Context, state: &mut State) {
                     offset_y: 0.0,
                 });
                 ctx.attr_padding(Rect::two(0, 1));
-                ctx.attr_border();
                 {
-                    if ctx.button("reopen", loc(LocId::EncodingReopen), ButtonStyle::default()) {
+                    if ctx.button("reopen", loc(LocId::EncodingReopen), ButtonStyle::action()) {
                         state.wants_encoding_change = StateEncodingChange::Reopen;
                     }
                     ctx.focus_on_first_present();
-                    if ctx.button("convert", loc(LocId::EncodingConvert), ButtonStyle::default()) {
+                    if ctx.button("convert", loc(LocId::EncodingConvert), ButtonStyle::action()) {
                         state.wants_encoding_change = StateEncodingChange::Convert;
                     }
                 }
@@ -90,7 +98,7 @@ pub fn draw_statusbar(ctx: &mut Context, state: &mut State) {
                 }),
                 tb.tab_size(),
             ),
-            ButtonStyle::default(),
+            ButtonStyle::default().bracketed(false),
         );
         if state.wants_indentation_picker {
             ctx.table_begin("indentation-picker");
@@ -101,7 +109,6 @@ pub fn draw_statusbar(ctx: &mut Context, state: &mut State) {
                 offset_x: 0.0,
                 offset_y: 0.0,
             });
-            ctx.attr_border();
             ctx.attr_padding(Rect::two(0, 1));
             ctx.table_set_cell_gap(Size { width: 1, height: 0 });
             {
@@ -159,7 +166,7 @@ pub fn draw_statusbar(ctx: &mut Context, state: &mut State) {
             "location",
             &arena_format!(
                 ctx.arena(),
-                "{}:{}",
+                "Ln {}, Col {}",
                 tb.cursor_logical_pos().y + 1,
                 tb.cursor_logical_pos().x + 1
             ),
@@ -171,28 +178,27 @@ pub fn draw_statusbar(ctx: &mut Context, state: &mut State) {
             &arena_format!(ctx.arena(), "{}/{}", tb.logical_line_count(), tb.visual_line_count(),),
         );
 
-        if tb.is_overtype() && ctx.button("overtype", "OVR", ButtonStyle::default()) {
+        if tb.is_overtype()
+            && ctx.button("overtype", "OVR", ButtonStyle::default().bracketed(false))
+        {
             tb.set_overtype(false);
             ctx.needs_rerender();
-        }
-
-        if tb.is_dirty() {
-            ctx.label("dirty", "*");
         }
 
         ctx.block_begin("filename-container");
         ctx.attr_intrinsic_size(Size { width: COORD_TYPE_SAFE_MAX, height: 1 });
         {
             let total = state.documents.len();
-            let mut filename = doc.filename.as_str();
-            let filename_buf;
+            let filename = doc.filename.as_str();
+            let modified = if tb.is_dirty() { "*" } else { "" };
+            let filename = if total > 1 {
+                arena_format!(ctx.arena(), "{}{} + {}", filename, modified, total - 1)
+            } else {
+                arena_format!(ctx.arena(), "{}{}", filename, modified)
+            };
 
-            if total > 1 {
-                filename_buf = arena_format!(ctx.arena(), "{} + {}", filename, total - 1);
-                filename = &filename_buf;
-            }
-
-            state.wants_go_to_file |= ctx.button("filename", filename, ButtonStyle::default());
+            state.wants_go_to_file |=
+                ctx.button("filename", &filename, ButtonStyle::default().bracketed(false));
             ctx.inherit_focus();
             ctx.attr_overflow(Overflow::TruncateMiddle);
             ctx.attr_position(Position::Right);
@@ -217,7 +223,8 @@ pub fn draw_dialog_language_change(ctx: &mut Context, state: &mut State) {
         let height = (ctx.size().height - 10).max(10);
 
         ctx.scrollarea_begin("scrollarea", Size { width, height });
-        ctx.attr_background_rgba(ctx.indexed_alpha(IndexedColor::Black, 1, 4));
+        ctx.attr_background_rgba(ctx.indexed(IndexedColor::Background));
+        ctx.attr_foreground_rgba(ctx.indexed(IndexedColor::Foreground));
         ctx.inherit_focus();
         {
             ctx.list_begin("languages");
@@ -287,7 +294,8 @@ pub fn draw_dialog_encoding_change(ctx: &mut Context, state: &mut State) {
         ctx.table_end();
 
         ctx.scrollarea_begin("scrollarea", Size { width, height });
-        ctx.attr_background_rgba(ctx.indexed_alpha(IndexedColor::Black, 1, 4));
+        ctx.attr_background_rgba(ctx.indexed(IndexedColor::Background));
+        ctx.attr_foreground_rgba(ctx.indexed(IndexedColor::Foreground));
         {
             ctx.list_begin("encodings");
             ctx.inherit_focus();
@@ -369,7 +377,8 @@ pub fn draw_go_to_file(ctx: &mut Context, state: &mut State) {
         let height = (ctx.size().height - 10).max(10);
 
         ctx.scrollarea_begin("scrollarea", Size { width, height });
-        ctx.attr_background_rgba(ctx.indexed_alpha(IndexedColor::Black, 1, 4));
+        ctx.attr_background_rgba(ctx.indexed(IndexedColor::Background));
+        ctx.attr_foreground_rgba(ctx.indexed(IndexedColor::Foreground));
         ctx.inherit_focus();
         {
             ctx.list_begin("documents");

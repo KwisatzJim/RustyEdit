@@ -133,7 +133,8 @@ fn configure_windows_binary(target_os: TargetOs) {
 
     winresource::WindowsResource::new()
         .set_manifest_file(manifest_path)
-        .set("FileDescription", "Microsoft Edit")
+        .set("FileDescription", "RustyEdit")
+        .set("ProductName", "RustyEdit")
         .set("LegalCopyright", "© Microsoft Corporation. All rights reserved.")
         .set_icon(icon_path)
         .compile()

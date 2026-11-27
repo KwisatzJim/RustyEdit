@@ -1156,6 +1156,15 @@ impl TextBuffer {
 
     /// Find the next occurrence of the given `pattern` and select it.
     pub fn find_and_select(&mut self, pattern: &str, options: SearchOptions) -> icu::Result<()> {
+        self.find_and_select_match(pattern, options).map(|_| ())
+    }
+
+    /// Selects the next match and reports whether one was found.
+    pub fn find_and_select_match(
+        &mut self,
+        pattern: &str,
+        options: SearchOptions,
+    ) -> icu::Result<bool> {
         if let Some(search) = &mut self.search {
             let search = search.get_mut();
             // When the search input changes we must reset the search.
@@ -1172,7 +1181,7 @@ impl TextBuffer {
         }
 
         if pattern.is_empty() {
-            return Ok(());
+            return Ok(false);
         }
 
         let search = match &self.search {
@@ -1186,12 +1195,13 @@ impl TextBuffer {
 
         // If we previously searched through the entire document and found 0 matches,
         // then we can avoid searching again.
-        if search.no_matches {
-            return Ok(());
+        if search.no_matches && search.buffer_generation == self.buffer.generation() {
+            return Ok(false);
         }
 
         // If the user moved the cursor since the last search, but the needle remained the same,
         // we still need to move the start of the search to the new cursor position.
+        search.no_matches = false;
         let next_search_offset = if self.selection_generation == search.selection_generation {
             search.next_search_offset
         } else {
@@ -1203,8 +1213,7 @@ impl TextBuffer {
             }
         };
 
-        self.find_select_next(search, next_search_offset, true)?;
-        Ok(())
+        Ok(self.find_select_next(search, next_search_offset, true)?.is_some())
     }
 
     /// Find the next occurrence of the given `pattern` and replace it with `replacement`.
@@ -1248,16 +1257,27 @@ impl TextBuffer {
         options: SearchOptions,
         replacement: &[u8],
     ) -> icu::Result<()> {
+        self.find_and_count_replacements(pattern, options, replacement).map(|_| ())
+    }
+
+    /// Replaces all matches and returns how many replacements were made.
+    pub fn find_and_count_replacements(
+        &mut self,
+        pattern: &str,
+        options: SearchOptions,
+        replacement: &[u8],
+    ) -> icu::Result<usize> {
         let scratch = scratch_arena(None);
         let mut search = self.find_construct_search(pattern, options)?;
         let mut offset = 0;
+        let mut count = 0;
         let parsed_replacements = Self::find_parse_replacement(&scratch, &mut search, replacement);
 
         self.edit_begin_grouping();
         let result = loop {
             let range = match self.find_select_next(&mut search, offset, false) {
                 Ok(Some(range)) => range,
-                Ok(None) => break Ok(()),
+                Ok(None) => break Ok(count),
                 Err(err) => break Err(err),
             };
             let replacement =
@@ -1266,6 +1286,7 @@ impl TextBuffer {
             self.undo_barrier();
             self.write_raw(&replacement);
             self.undo_barrier();
+            count += 1;
 
             // The `active_edit_off` points to the end of the last edit made by `write_raw()`.
             // This differs from the self.cursor.offset, if `write_raw()` did an `insert_final_newline`.
@@ -1280,7 +1301,7 @@ impl TextBuffer {
             if range.is_empty() {
                 offset = match self.find_advance_past_zero_width(offset) {
                     Some(next) => next,
-                    None => break Ok(()),
+                    None => break Ok(count),
                 };
             }
         };
@@ -4168,7 +4189,14 @@ mod tests {
             buf.set_insert_final_newline(final_newline);
 
             let before = buffer_state(&buf);
-            buf.find_and_replace_all("foo", Default::default(), b"FooFoo").unwrap();
+            assert_eq!(
+                buf.find_and_count_replacements("missing", Default::default(), b"x").unwrap(),
+                0
+            );
+            assert_eq!(
+                buf.find_and_count_replacements("foo", Default::default(), b"FooFoo").unwrap(),
+                2
+            );
             assert_round_trip(&mut buf, &before, expected);
         }
     }
