@@ -1,6 +1,6 @@
 # RustyEdit
 
-RustyEdit is an independent fork of [Microsoft Edit](https://github.com/microsoft/edit), a terminal text editor inspired by the MS-DOS Editor. The executable is named `edit`.
+RustyEdit is an independent fork of [Microsoft Edit](https://github.com/microsoft/edit), a terminal text editor inspired by the MS-DOS Editor, but with a little more modern TUI. The executable is named `edit`.
 
 ## Installation
 
