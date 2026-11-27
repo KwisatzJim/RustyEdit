@@ -12,6 +12,7 @@ use edit::lsh::{FILE_ASSOCIATIONS, Language, process_file_associations};
 use edit::{path, sys};
 
 use crate::apperr;
+use crate::recent_files::RecentFiles;
 use crate::settings::Settings;
 use crate::state::DisplayablePathBuf;
 
@@ -124,6 +125,7 @@ impl Document {
 #[derive(Default)]
 pub struct DocumentManager {
     list: Vec<Document>,
+    pub recent_files: RecentFiles,
 }
 
 impl DocumentManager {
@@ -208,20 +210,31 @@ impl DocumentManager {
     }
 
     pub fn add_file_path(&mut self, path: &Path) -> apperr::Result<&mut Document> {
+        self.add_file(path, true)
+    }
+
+    pub fn reopen_recent(&mut self, path: &Path) -> apperr::Result<&mut Document> {
+        self.add_file(path, false)
+    }
+
+    fn add_file(&mut self, path: &Path, allow_new: bool) -> apperr::Result<&mut Document> {
         let path = path::normalize(path);
 
         let mut file = match File::open(&path) {
             Ok(file) => Some(file),
-            Err(err) if err.kind() == io::ErrorKind::NotFound => None,
+            Err(err) if allow_new && err.kind() == io::ErrorKind::NotFound => None,
             Err(err) => return Err(err.into()),
         };
 
         let file_id = if file.is_some() { Some(sys::file_id(file.as_ref(), &path)?) } else { None };
 
         // Check if the file is already open.
-        if file_id.is_some() && self.update_active(|doc| doc.file_id == file_id) {
-            let doc = self.active_mut().unwrap();
-            return Ok(doc);
+        if file_id.is_some()
+            && (self.active().is_some_and(|doc| doc.file_id == file_id)
+                || self.update_active(|doc| doc.file_id == file_id))
+        {
+            self.remember_opened_file(&path);
+            return Ok(self.active_mut().unwrap());
         }
 
         let buffer = Self::create_buffer()?;
@@ -241,6 +254,9 @@ impl DocumentManager {
             new_file_counter: 0,
             language_override: None,
         };
+        if file.is_some() {
+            self.remember_opened_file(&path);
+        }
         doc.set_path(path);
 
         if let Some(active) = self.active()
@@ -255,6 +271,12 @@ impl DocumentManager {
 
         self.list.push(doc);
         Ok(self.list.last_mut().unwrap())
+    }
+
+    fn remember_opened_file(&mut self, path: &Path) {
+        if path != Settings::borrow().path {
+            self.recent_files.remember(path);
+        }
     }
 
     pub fn reflow_all(&self) {

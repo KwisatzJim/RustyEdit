@@ -361,6 +361,12 @@ vi = "Mở tệp…"
 zh-hans = "打开文件…"
 zh-hant = "開啟舊檔…"
 
+[FileOpenRecent]
+en = "Open Recent…"
+
+[FileOpenRecentEmpty]
+en = "No recent files"
+
 [FileSave]
 en = "Save"
 ar = "حفظ"

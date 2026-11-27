@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 use edit::arena::arena_format;
+use edit::framebuffer::IndexedColor;
 use edit::helpers::*;
 use edit::input::{kbmod, vk};
 use edit::tui::*;
@@ -45,6 +46,9 @@ fn draw_menu_file(ctx: &mut Context, state: &mut State) {
     if ctx.menubar_menu_button(loc(LocId::FileOpen), 'O', kbmod::CTRL | vk::O) {
         state.wants_file_picker = StateFilePicker::Open;
     }
+    if ctx.menubar_menu_button(loc(LocId::FileOpenRecent), 'R', vk::NULL) {
+        state.wants_open_recent = true;
+    }
     if state.documents.active().is_some() {
         if ctx.menubar_menu_button(loc(LocId::FileSave), 'S', kbmod::CTRL | vk::S) {
             state.wants_save = true;
@@ -78,6 +82,47 @@ fn draw_menu_file(ctx: &mut Context, state: &mut State) {
         state.wants_exit = true;
     }
     ctx.menubar_menu_end();
+}
+
+pub fn draw_open_recent(ctx: &mut Context, state: &mut State) {
+    let paths = state.documents.recent_files.paths();
+    let mut selected = None;
+
+    ctx.modal_begin("open-recent", loc(LocId::FileOpenRecent));
+    if paths.is_empty() {
+        ctx.label("empty", loc(LocId::FileOpenRecentEmpty));
+    } else {
+        let width = (ctx.size().width - 8).clamp(1, 90);
+        let height = (paths.len() as CoordType).min((ctx.size().height - 6).max(1));
+        ctx.scrollarea_begin("scrollarea", Size { width, height });
+        ctx.attr_background_rgba(ctx.indexed(IndexedColor::Background));
+        ctx.attr_foreground_rgba(ctx.indexed(IndexedColor::Foreground));
+        ctx.inherit_focus();
+        ctx.list_begin("paths");
+        ctx.inherit_focus();
+        for (index, path) in paths.iter().enumerate() {
+            let label = path.to_string_lossy();
+            let label = label.replace(|c: char| c.is_control(), "�");
+            let selection = ctx.list_item(index == 0, &label);
+            ctx.attr_overflow(Overflow::TruncateHead);
+            if selection == ListSelection::Activated {
+                selected = Some(path.clone());
+            }
+        }
+        ctx.list_end();
+        ctx.scrollarea_end();
+    }
+
+    if ctx.modal_end() || selected.is_some() {
+        state.wants_open_recent = false;
+        ctx.needs_rerender();
+    }
+
+    if let Some(path) = selected
+        && let Err(err) = state.documents.reopen_recent(&path)
+    {
+        error_log_add(ctx, state, err);
+    }
 }
 
 fn draw_menu_edit(ctx: &mut Context, state: &mut State) {

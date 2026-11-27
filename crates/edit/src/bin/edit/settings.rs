@@ -91,7 +91,7 @@ fn settings_json_path() -> Option<PathBuf> {
     Some(config_dir)
 }
 
-fn config_dir() -> Option<PathBuf> {
+pub fn config_dir() -> Option<PathBuf> {
     fn var_path(key: &str) -> Option<PathBuf> {
         std::env::var_os(key).map(PathBuf::from)
     }

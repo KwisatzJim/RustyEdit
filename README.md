@@ -2,6 +2,10 @@
 
 RustyEdit is an independent fork of [Microsoft Edit](https://github.com/microsoft/edit), a terminal text editor inspired by the MS-DOS Editor, but with a little more modern TUI. The executable is named `edit`.
 
+![RustyEdit showing a syntax-highlighted Rust file with the Find bar open](assets/rustyedit-screenshot.png)
+
+Use **File → Open Recent** to reopen one of the last 10 files you opened. The list is stored locally and is available when you restart RustyEdit.
+
 ## Installation
 
 Build from this checkout with Rust and a C compiler:

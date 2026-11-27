@@ -8,6 +8,7 @@ mod draw_filepicker;
 mod draw_menubar;
 mod draw_statusbar;
 mod localization;
+mod recent_files;
 mod settings;
 mod state;
 
@@ -370,6 +371,9 @@ fn draw(tui: &mut Tui, input: Option<input::Input>, state: &mut State) {
     }
     if state.wants_go_to_file {
         draw_go_to_file(ctx, state);
+    }
+    if state.wants_open_recent {
+        draw_open_recent(ctx, state);
     }
     if state.wants_about {
         draw_dialog_about(ctx, state);
