@@ -69,8 +69,8 @@ fn decode_paths(bytes: &[u8]) -> impl Iterator<Item = OsString> + '_ {
 #[cfg(windows)]
 fn decode_paths(bytes: &[u8]) -> impl Iterator<Item = OsString> {
     use std::os::windows::ffi::OsStringExt;
-    let units: Vec<_> =
-        bytes.chunks_exact(2).map(|pair| u16::from_le_bytes([pair[0], pair[1]])).collect();
+    let (pairs, _) = bytes.as_chunks::<2>();
+    let units: Vec<_> = pairs.iter().map(|pair| u16::from_le_bytes(*pair)).collect();
     let paths: Vec<_> =
         units.split(|&unit| unit == 0).take(LIMIT).map(OsString::from_wide).collect();
     paths.into_iter()
