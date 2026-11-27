@@ -4,19 +4,19 @@
 
 [Setup]
 AppId={{1717C176-3A2F-4E01-83C4-916424E34160}
-AppName=Microsoft Edit
-DefaultGroupName=Microsoft Edit
+AppName=RustyEdit
+DefaultGroupName=RustyEdit
 AppVersion={#AppVersion}
-AppPublisher=Microsoft Corporation
-AppPublisherURL=https://github.com/microsoft/edit
-AppSupportURL=https://github.com/microsoft/edit
-AppUpdatesURL=https://github.com/microsoft/edit
-SetupMutex=microsoft-edit-setup
-DefaultDirName={autopf}\Microsoft Edit
+AppPublisher=RustyEdit contributors
+AppPublisherURL=https://github.com/KwisatzJim/RustyEdit
+AppSupportURL=https://github.com/KwisatzJim/RustyEdit
+AppUpdatesURL=https://github.com/KwisatzJim/RustyEdit
+SetupMutex=rustyedit-setup
+DefaultDirName={autopf}\RustyEdit
 DisableDirPage=yes
 DisableProgramGroupPage=yes
 SetupIconFile=edit.ico
-UninstallDisplayIcon={app}\msedit.exe
+UninstallDisplayIcon={app}\edit.exe
 MinVersion=10.0
 ArchitecturesAllowed={#ArchitecturesAllowed}
 #if ArchitecturesAllowed != "x86"
@@ -34,11 +34,11 @@ SignedUninstallerDir={#SignedUninstallerDir}
 #endif
 
 [Tasks]
-Name: "path"; Description: "Add msedit to the system &PATH"; Flags: checkablealone
+Name: "path"; Description: "Add edit to the system &PATH"; Flags: checkablealone
 Name: "path\edit"; Description: "Also provide it as &edit, taking precedence over the edit.exe shipped with Windows"; Flags: dontinheritcheck
 
 [Files]
-Source: {#Source}; DestDir: "{app}"; DestName: "msedit.exe"; Flags: notimestamp ignoreversion
+Source: {#Source}; DestDir: "{app}"; DestName: "edit.exe"; Flags: notimestamp ignoreversion
 
 ; Just in case, ensure that the install dir is in a clean state.
 ; This also ensures that edit is not currently being used. :)
@@ -49,28 +49,15 @@ Type: filesandordirs; Name: "{app}"
 Type: filesandordirs; Name: "{app}"
 
 [Code]
-function CreateHardLink(lpFileName, lpExistingFileName: String; lpSecurityAttributes: LongWord): Boolean;
-external 'CreateHardLinkW@kernel32.dll stdcall';
-
 const
     ENV_KEY = 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment';
 
 var
     g_AppDirPath: String;
-    g_MseditExePath: String;
-    g_EditExePath: String;
 
 procedure InitializeGlobals;
 begin
     g_AppDirPath := ExpandConstant('{app}');
-    g_MseditExePath := ExpandConstant('{app}\msedit.exe');
-    g_EditExePath := ExpandConstant('{app}\edit.exe');
-end;
-
-procedure CreateHardlinks;
-begin
-    if not CreateHardLink(g_EditExePath, g_MseditExePath, 0) then
-        RaiseException('Failed to create hardlink for edit.exe');
 end;
 
 // Install=False removes us from the PATH. Prepend=True places us ahead of
@@ -160,9 +147,6 @@ begin
         InitializeGlobals;
 
         Prepend := WizardIsTaskSelected('path\edit');
-        if Prepend then
-            CreateHardlinks;
-
         ModifyPath(WizardIsTaskSelected('path'), Prepend);
     end;
 end;

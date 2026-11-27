@@ -1,24 +1,24 @@
-name: msedit
+name: rustyedit
 base: core24
 version: "2.0.0"
-summary: Edit is an MS-DOS inspired text editor from Microsoft
+summary: A modern terminal text editor
 description: |
-  Edit pays homage to the classic MS-DOS Editor, but with a modern interface and input controls similar to VS Code. Learn more at https://github.com/microsoft/edit
-
-  Disclaimer: This is an unofficial Snap and it is not endorsed by nor affiliated officially with Microsoft Corporation.
+  RustyEdit is an independent fork of Microsoft Edit, inspired by the classic
+  MS-DOS Editor and built with a modern terminal interface.
+  https://github.com/KwisatzJim/RustyEdit
 
 grade: stable
 confinement: strict
 
 apps:
-  msedit:
+  rustyedit:
     command: bin/edit
     plugs:
       - home
 
 parts:
   edit:
-    source: https://github.com/microsoft/edit.git
+    source: https://github.com/KwisatzJim/RustyEdit.git
     source-type: git
     plugin: rust
     build-packages:
